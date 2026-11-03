@@ -1,0 +1,15 @@
+# Secretos y entorno local
+.env
+.env.*
+!.env.example
+
+# Integraciones de IA generadas por `openspec init`: cada persona genera la suya
+.opencode/
+.claude/
+
+# Bloqueo temporal del CLI de OpenSpec al archivar
+.openspec-archive.lock
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

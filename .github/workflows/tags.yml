@@ -1,0 +1,55 @@
+# Tags y releases al mergear un PR (CONTRIBUTING §9):
+# - En dev, si lo mergeado cambia la versión → tag vX.Y.Z-beta.N en el último commit de dev.
+# - En main → tag vX.Y.Z (último beta sin sufijo) y GitHub Release con notas generadas.
+name: Tags
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev, main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tags
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Tag beta
+        if: github.base_ref == 'dev'
+        run: |
+          if [ -n "$(git tag --points-at HEAD --list 'v*')" ]; then
+            echo "HEAD ya tiene tag."; exit 0
+          fi
+
+          source .github/scripts/version.sh
+          next_beta
+          if [ -z "$tag" ]; then
+            echo "Sin cambios de versión."; exit 0
+          fi
+
+          git tag "$tag"
+          git push origin "$tag"
+          echo "Creado $tag"
+
+      - name: Tag y release estable
+        if: github.base_ref == 'main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          beta=$(git tag --merged HEAD --list 'v*-beta.*' --sort=-v:refname | head -n 1)
+          version="${beta%-beta.*}"
+          if [ -z "$beta" ] || git rev-parse -q --verify "refs/tags/$version" > /dev/null; then
+            echo "Sin versión nueva que publicar."; exit 0
+          fi
+          gh release create "$version" --target "$(git rev-parse HEAD)" --title "$version" --generate-notes

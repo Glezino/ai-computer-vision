@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Project documentation is the source of truth; WORKFLOW.md has the workflow and the documentation map.
+  Product intent: docs/PROJECT.md and docs/REQUIREMENTS.md (IDs OBJ-n, RF-n, RNF-n, RD-n).
+  Technical direction: docs/ARCHITECTURE.md, docs/ADR/ and docs/CONTRACTS/.
+  One GitHub Story = one OpenSpec change = one branch = one PR.
+  Write artifacts in Spanish; keep the format keywords validated by the CLI in English.
+  Prefer existing architecture, patterns, contracts and decisions over new ones.
+
+rules:
+  proposal:
+    - Link the GitHub Story (#N) and the requirement IDs it implements.
+    - Keep the scope to the Story and its layer (or contract), leaving that layer working; propose splitting the Story if it does not fit one change.
+    - List the documentation, contracts and ADRs the change affects.
+  specs:
+    - Describe observable behavior and outcomes, not implementation details.
+    - Reference the requirement IDs (RF/RNF/RD) each requirement implements.
+    - Link contracts in docs/CONTRACTS/ instead of copying their fields.
+    - Do not invent requirements; changes without behavioral impact have no spec delta.
+  design:
+    - Follow docs/ARCHITECTURE.md and accepted ADRs.
+    - Identify affected components, boundaries and contracts, and flag decisions that need a new ADR.
+    - Do not redesign unrelated parts of the system.
+  tasks:
+    - Start from the Story's planned tasks; keep tasks small, concrete and verifiable.
+    - Include tests where behavior or risk justify them, and documentation updates when the change affects a documented source of truth.
+
+operations:
+  apply:
+    guidance:
+      - Implement only the approved scope; do not silently change approved requirements or design.
+      - Keep tasks.md as the source of truth for progress.
+      - When implementation is complete, stop for the implementation review (WORKFLOW.md §6, stop 3). After approval, continue without pausing up to the PR to dev (WORKFLOW.md §6, step 5).
+  archive:
+    guidance:
+      - Archive only after the PR review is approved (WORKFLOW.md §6, stop 4). If the specs are not in sync, sync first; then archive without asking again.
+      - The archive commit contains only the OpenSpec archive. Keep the CLI's default archive validation enabled.

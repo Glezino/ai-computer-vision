@@ -1,0 +1,111 @@
+# Checks de cada PR (CONTRIBUTING §8). OpenSpec y la versión prevista siempre están activos.
+# Los checks del stack se activan descomentando su bloque (el walking skeleton lo hace):
+# ajusta la carpeta, quita las líneas que no uses y añade el resto como pasos `run`.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  openspec:
+    name: OpenSpec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install -g @fission-ai/openspec@latest
+      - run: openspec validate --all --no-interactive
+
+  # Comenta en el PR el tag beta que creará al mergear y por qué (CONTRIBUTING §9).
+  version:
+    name: Versión prevista
+    if: github.base_ref == 'dev'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          source .github/scripts/version.sh
+          next_beta
+          if [ -n "$tag" ]; then
+            body="**Versión prevista al mergear:** \`$tag\`"$'\n\n'"Motivo: $reason"
+          else
+            body="**Versión prevista al mergear:** sin tag; no hay commits \`feat\`, \`fix\`, \`perf\` ni incompatibles."
+          fi
+          gh pr comment "$PR" --edit-last --create-if-none --body "$body"
+
+  # ── Python con uv ───────────────────────────────────────────────
+  # python:
+  #   name: Python
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: backend
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - uses: astral-sh/setup-uv@v10.3.0
+  #       with:
+  #         working-directory: backend
+  #         enable-cache: true
+  #     - run: uv sync --frozen
+  #     - run: uv run ruff check .           # lint
+  #     - run: uv run ruff format --check .  # formato
+  #     - run: uv run mypy                   # tipos
+  #     - run: uv run pytest                 # tests
+  #     - run: docker build --target prod .  # imagen de producción
+
+  # ── Python con pip ──────────────────────────────────────────────
+  # python:
+  #   name: Python
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: backend
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - uses: actions/setup-python@v6
+  #       with:
+  #         python-version-file: backend/.python-version
+  #         cache: pip
+  #         cache-dependency-path: backend/requirements*.txt
+  #     - run: pip install -r requirements.txt -r requirements-dev.txt
+  #     - run: ruff check .                  # lint
+  #     - run: ruff format --check .         # formato
+  #     - run: mypy .                        # tipos
+  #     - run: pytest                        # tests
+  #     - run: docker build --target prod .  # imagen de producción
+
+  # ── Node: TypeScript, React… (scripts de package.json) ──────────
+  # node:
+  #   name: Node
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: frontend
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #     - uses: actions/setup-node@v7
+  #       with:
+  #         node-version-file: frontend/.nvmrc
+  #         cache: npm
+  #         cache-dependency-path: frontend/package-lock.json
+  #     - run: npm ci
+  #     - run: npm run lint                  # lint
+  #     - run: npm run format:check          # formato
+  #     - run: npm run typecheck             # tipos (TypeScript)
+  #     - run: npm test                      # tests
+  #     - run: npm run build                 # build
+  #     - run: docker build --target prod .  # imagen de producción

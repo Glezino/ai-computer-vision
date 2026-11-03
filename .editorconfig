@@ -1,0 +1,18 @@
+# Formato básico común a cualquier editor: https://editorconfig.org
+# Cada stack añade aquí sus excepciones (por ejemplo, indent_size = 4 para Python).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.md]
+# Dos espacios al final de línea son un salto de línea en Markdown.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
