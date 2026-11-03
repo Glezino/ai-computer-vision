@@ -30,7 +30,7 @@ flowchart LR
 | Descarga del dataset | FiftyOne (`load_from_hub`) | Objetivo | [PROJECT DEC-02](PROJECT.md#8-decisiones-de-producto) |
 | Notebooks | Jupyter + jupytext (formato percent) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Entrenamiento | Google Colab con GPU | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
-| Entorno de ejecución | Docker (imagen CPU) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Entorno de ejecución | Docker (imagen CPU) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Calidad | ruff, pytest | Actual | — |
 
 ## 3. Componentes

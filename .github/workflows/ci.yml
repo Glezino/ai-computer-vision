@@ -1,5 +1,5 @@
 # Checks de cada PR (CONTRIBUTING §8). OpenSpec y la versión prevista siempre están activos.
-# Checks del stack: job `python` (ARCHITECTURE §8).
+# Checks del stack: jobs `python` y `docker` (ARCHITECTURE §8).
 name: CI
 
 on:
@@ -58,3 +58,11 @@ jobs:
       - run: uv run ruff check .           # lint
       - run: uv run ruff format --check .  # formato
       - run: uv run pytest                 # tests
+
+  # Construye la imagen de CPU en cada PR (ARCHITECTURE §8).
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t logo-detector .
