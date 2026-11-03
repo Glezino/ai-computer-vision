@@ -22,3 +22,12 @@ PRETRAINED_MODEL = "yolo26n.pt"
 
 # Tamaño de imagen de entrada del detector, en píxeles (valor por defecto de YOLO).
 IMAGE_SIZE = 640
+
+# Dataset de partida OpenLogo en Hugging Face, fijado a una revisión (PROJECT DEC-02, ADR-0003).
+OPENLOGO_REPO = "Voxel51/OpenLogo"
+OPENLOGO_REVISION = "65b6e930d04cda8a229d2a3bf1aacb5ea6a85838"
+DATASET_DIR = DATA_DIR / "openlogo"
+
+# Particiones train/val/test y semilla de la división (RF-01).
+SPLIT_RATIOS = (0.7, 0.15, 0.15)
+SPLIT_SEED = 42
