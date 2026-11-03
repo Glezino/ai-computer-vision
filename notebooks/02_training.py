@@ -42,7 +42,15 @@ if IN_COLAB:
     pip = [sys.executable, "-m", "pip", "install", "-q", "--ignore-requires-python"]
     subprocess.run([*pip, "-e", str(project)], check=True)
     sys.path.insert(0, str(project / "src"))
-    subprocess.run(["nvidia-smi", "-L"], check=False)
+
+    import torch
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "Este entorno de Colab no tiene GPU: Entorno de ejecución → Cambiar tipo de "
+            "entorno de ejecución → GPU, y vuelve a ejecutar el notebook."
+        )
+    print(torch.cuda.get_device_name(0))
 
 # %%
 from logo_detector import dataset  # noqa: E402
