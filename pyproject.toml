@@ -4,13 +4,30 @@ version = "0.0.0"
 description = "Detección de logos de marcas en vídeo e informe de exposición en pantalla."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "opencv-python>=4.10",
+    "torch>=2.5",
+    "torchvision>=0.20",
+    "ultralytics>=8.4",
+]
 
 [dependency-groups]
 dev = [
+    "jupyter>=1.1",
+    "jupytext>=1.16",
     "pytest>=8",
     "ruff>=0.8",
 ]
+
+# PyTorch solo para CPU: la inferencia es en CPU y el entrenamiento se hace en Colab (ADR-0001).
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]
