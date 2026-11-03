@@ -29,3 +29,4 @@ runs/
 
 # Notebooks generados con jupytext (ADR-0002)
 *.ipynb
+.ipynb_checkpoints/

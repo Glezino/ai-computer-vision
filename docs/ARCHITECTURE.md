@@ -24,11 +24,11 @@ flowchart LR
 |---|---|---|---|
 | Lenguaje | Python 3.12 | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Dependencias | uv (`pyproject.toml` + `uv.lock`) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
-| Detector | Ultralytics YOLO, variante nano o small preentrenada en COCO | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
-| Deep learning | PyTorch (dependencia de Ultralytics) | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
-| Procesado de imagen y vídeo | OpenCV | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Detector | Ultralytics YOLO, variante nano o small preentrenada en COCO | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Deep learning | PyTorch para CPU (índice de PyTorch), dependencia de Ultralytics | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Procesado de imagen y vídeo | OpenCV | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Descarga del dataset | FiftyOne (`load_from_hub`) | Objetivo | [PROJECT DEC-02](PROJECT.md#8-decisiones-de-producto) |
-| Notebooks | Jupyter + jupytext (formato percent) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Notebooks | Jupyter + jupytext (formato percent) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Entrenamiento | Google Colab con GPU | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Entorno de ejecución | Docker (imagen CPU) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Calidad | ruff, pytest | Actual | — |

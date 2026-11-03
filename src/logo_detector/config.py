@@ -17,5 +17,8 @@ OUTPUTS_DIR = ROOT_DIR / "outputs"
 # Umbral de confianza por defecto de las detecciones (RD-04).
 CONFIDENCE_THRESHOLD = 0.5
 
+# Detector YOLO nano preentrenado en COCO; Ultralytics lo descarga en MODELS_DIR (ADR-0001).
+PRETRAINED_MODEL = "yolo26n.pt"
+
 # Tamaño de imagen de entrada del detector, en píxeles (valor por defecto de YOLO).
 IMAGE_SIZE = 640
