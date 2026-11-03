@@ -9,7 +9,7 @@
 
 ## 3. CI
 
-- [ ] 3.1 Añadir el job `docker` a `.github/workflows/ci.yml` con `docker build .`; verificar que pasa en verde en el PR
+- [x] 3.1 Añadir el job `docker` a `.github/workflows/ci.yml` con `docker build .`; verificar que pasa en verde en el PR
 
 ## 4. Documentación
 
