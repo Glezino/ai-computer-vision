@@ -27,6 +27,17 @@ uv run jupyter lab   # abre Jupyter; empieza por 01_quickstart
 
 La primera ejecución de `01_quickstart` necesita internet para descargar los pesos preentrenados en `models/`.
 
+### Con Docker
+
+Requisitos: [Docker](https://docs.docker.com/get-docker/) y GNU Make; no hace falta instalar uv ni Python.
+
+```sh
+make docker-build   # construye la imagen de CPU (la primera vez tarda unos minutos)
+make docker-run     # genera los notebooks y arranca Jupyter
+```
+
+Abre <http://127.0.0.1:8888/lab> (sin token; solo accesible desde tu equipo). El contenedor monta el repositorio, así que los cambios en `notebooks/*.py` y los pesos de `models/` se conservan en tu equipo.
+
 El resto de comandos está en [`docs/ARCHITECTURE.md` §7](docs/ARCHITECTURE.md#7-entorno-local-y-operación).
 
 ## Contribuir
