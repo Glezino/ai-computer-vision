@@ -18,6 +18,15 @@ make lint      # ruff: lint y formato
 make test      # pytest
 ```
 
+Los notebooks se escriben como scripts `.py` en `notebooks/` y se generan como `.ipynb`, que no se versionan:
+
+```sh
+make notebooks       # genera notebooks/*.ipynb
+uv run jupyter lab   # abre Jupyter; empieza por 01_quickstart
+```
+
+La primera ejecución de `01_quickstart` necesita internet para descargar los pesos preentrenados en `models/`.
+
 El resto de comandos está en [`docs/ARCHITECTURE.md` §7](docs/ARCHITECTURE.md#7-entorno-local-y-operación).
 
 ## Contribuir
