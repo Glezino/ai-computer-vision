@@ -1,5 +1,5 @@
 # Comandos del proyecto (ARCHITECTURE §7). Requieren uv y GNU Make.
-.PHONY: install lint format test notebooks docker-build docker-run
+.PHONY: install lint format test notebooks data docker-build docker-run
 
 install:
 	uv sync
@@ -18,6 +18,10 @@ test:
 # Genera un .ipynb por cada notebooks/*.py (ADR-0002); los .ipynb no se versionan.
 notebooks:
 	uv run jupytext --to ipynb notebooks/*.py
+
+# Descarga OpenLogo y prepara el dataset de las tres marcas en data/openlogo (RF-01).
+data:
+	uv run python -m logo_detector.dataset
 
 # Imagen de CPU con Jupyter (ADR-0002). MSYS_NO_PATHCONV evita que Git Bash reescriba /app.
 docker-build:
