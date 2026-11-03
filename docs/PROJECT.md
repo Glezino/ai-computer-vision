@@ -61,7 +61,7 @@ Prueba de concepto que detecta logos de marcas en vídeos y genera un informe co
 
 ## 7. Restricciones, supuestos y riesgos
 
-- **Restricciones:** entrega el 2026-11-04 a las 12:00; Python como lenguaje principal; Docker como entorno de ejecución; entregables fijados por el briefing (repositorio, demo en vivo, presentación técnica y Kanban).
+- **Restricciones:** entrega el 2026-11-04 a las 23:59; Python como lenguaje principal; Docker como entorno de ejecución; entregables fijados por el briefing (repositorio, demo en vivo, presentación técnica y Kanban).
 - **Supuestos:** el dataset público OpenLogo contiene suficientes imágenes anotadas de las tres marcas para entrenar un modelo útil; hay acceso a una GPU (local o gratuita en la nube) para entrenar en un tiempo razonable.
 - **Riesgos:**
   - Pocas imágenes por marca (~70 en FlickrLogos-32) → aumento de datos y, si hace falta, completar con un dataset de Roboflow Universe.
