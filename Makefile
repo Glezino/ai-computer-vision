@@ -1,5 +1,5 @@
 # Comandos del proyecto (ARCHITECTURE §7). Requieren uv y GNU Make.
-.PHONY: install lint format test
+.PHONY: install lint format test notebooks
 
 install:
 	uv sync
@@ -14,3 +14,7 @@ format:
 
 test:
 	uv run pytest
+
+# Genera un .ipynb por cada notebooks/*.py (ADR-0002); los .ipynb no se versionan.
+notebooks:
+	uv run jupytext --to ipynb notebooks/*.py
