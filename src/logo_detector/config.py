@@ -13,12 +13,16 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR / "models"
 OUTPUTS_DIR = ROOT_DIR / "outputs"
+RUNS_DIR = ROOT_DIR / "runs"
 
 # Umbral de confianza por defecto de las detecciones (RD-04).
 CONFIDENCE_THRESHOLD = 0.5
 
 # Detector YOLO nano preentrenado en COCO; Ultralytics lo descarga en MODELS_DIR (ADR-0001).
 PRETRAINED_MODEL = "yolo26n.pt"
+
+# Pesos del modelo de marcas reentrenado, en MODELS_DIR (RF-02).
+BRAND_MODEL = "brands.pt"
 
 # Tamaño de imagen de entrada del detector, en píxeles (valor por defecto de YOLO).
 IMAGE_SIZE = 640
