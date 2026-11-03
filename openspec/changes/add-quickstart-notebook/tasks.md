@@ -18,4 +18,4 @@
 
 - [x] 4.1 Documentar en el README cómo generar y abrir los notebooks (`make notebooks`, `uv run jupyter lab`, descarga de pesos en la primera ejecución)
 - [x] 4.2 Actualizar ARCHITECTURE §2 (Ultralytics, PyTorch CPU, OpenCV, Jupyter y jupytext pasan a «Actual») y revisar §7
-- [ ] 4.3 Verificar en el PR que el job `python` del CI pasa en verde con las nuevas dependencias
+- [x] 4.3 Verificar en el PR que el job `python` del CI pasa en verde con las nuevas dependencias
