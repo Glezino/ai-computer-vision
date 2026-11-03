@@ -27,6 +27,12 @@ uv run jupyter lab   # abre Jupyter; empieza por 01_quickstart
 
 La primera ejecución de `01_quickstart` necesita internet para descargar los pesos preentrenados en `models/`.
 
+Para entrenar hace falta el dataset de las tres marcas:
+
+```sh
+make data   # descarga de OpenLogo solo las imágenes de las marcas (~0,3 GB) y prepara data/openlogo/
+```
+
 ### Con Docker
 
 Requisitos: [Docker](https://docs.docker.com/get-docker/) y GNU Make; no hace falta instalar uv ni Python.

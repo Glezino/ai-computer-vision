@@ -27,7 +27,7 @@ flowchart LR
 | Detector | Ultralytics YOLO, variante nano o small preentrenada en COCO | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Deep learning | PyTorch para CPU (índice de PyTorch), dependencia de Ultralytics | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Procesado de imagen y vídeo | OpenCV | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
-| Descarga del dataset | FiftyOne (`load_from_hub`) | Objetivo | [PROJECT DEC-02](PROJECT.md#8-decisiones-de-producto) |
+| Descarga del dataset | `huggingface_hub` (descarga selectiva de `Voxel51/OpenLogo`) | Actual | [ADR-0003](ADR/0003-selective-openlogo-download.md) |
 | Notebooks | Jupyter + jupytext (formato percent) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Entrenamiento | Google Colab con GPU | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Entorno de ejecución | Docker (imagen CPU) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
@@ -37,7 +37,7 @@ flowchart LR
 
 | Componente | Responsabilidad | Datos que posee | Depende de | Estado |
 |---|---|---|---|---|
-| `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, FiftyOne | Objetivo |
+| `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
 | `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Objetivo |
 | `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Objetivo |
 | `report` | Calcula la exposición por marca a partir de las detecciones por fotograma (RF-05, RD-01…RD-04) | `outputs/` (informes) | `detection` | Objetivo |
