@@ -22,8 +22,8 @@ flowchart LR
 
 | Área | Tecnología | Estado | Decisión |
 |---|---|---|---|
-| Lenguaje | Python 3.12 | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
-| Dependencias | uv (`pyproject.toml` + `uv.lock`) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Lenguaje | Python 3.12 | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Dependencias | uv (`pyproject.toml` + `uv.lock`) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Detector | Ultralytics YOLO, variante nano o small preentrenada en COCO | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Deep learning | PyTorch (dependencia de Ultralytics) | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Procesado de imagen y vídeo | OpenCV | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
@@ -31,7 +31,7 @@ flowchart LR
 | Notebooks | Jupyter + jupytext (formato percent) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Entrenamiento | Google Colab con GPU | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Entorno de ejecución | Docker (imagen CPU) | Objetivo | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
-| Calidad | ruff, pytest | Objetivo | — |
+| Calidad | ruff, pytest | Actual | — |
 
 ## 3. Componentes
 
@@ -97,7 +97,7 @@ El `Makefile` es la fuente de verdad de los comandos. Los principales:
 - `make install`: `uv sync`.
 - `make notebooks`: genera los `.ipynb` desde `notebooks/*.py` con jupytext.
 - `make data`: descarga y prepara el dataset.
-- `make lint` y `make test`: ruff y pytest.
+- `make lint`, `make format` y `make test`: ruff (lint y formato) y pytest.
 - `make docker-build` y `make docker-run`: construyen y arrancan el contenedor con Jupyter.
 
 El entrenamiento se lanza desde el notebook de entrenamiento en Google Colab, que guarda `best.pt`; se copia a `models/`.
