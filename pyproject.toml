@@ -5,6 +5,7 @@ description = "Detección de logos de marcas en vídeo e informe de exposición 
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "huggingface-hub>=0.30",
     "opencv-python>=4.10",
     "torch>=2.5",
     "torchvision>=0.20",
