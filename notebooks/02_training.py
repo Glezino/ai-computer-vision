@@ -33,12 +33,15 @@ BRANCH = "dev"  # rama del repositorio que se entrena en Colab
 OVERRIDES: dict = {}  # p. ej. {"epochs": 1, "fraction": 0.1} para una prueba corta en CPU
 
 if IN_COLAB:
+    print(sys.version)
     project = Path("/content/ai-computer-vision")
     if not project.exists():
         subprocess.run(["git", "clone", "--branch", BRANCH, REPO, str(project)], check=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-e", str(project)], check=True)
+    # Colab no usa Python 3.12 (ADR-0002); el paquete no depende de nada específico de esa
+    # versión, así que se instala igualmente sobre el PyTorch con CUDA que trae Colab.
+    pip = [sys.executable, "-m", "pip", "install", "-q", "--ignore-requires-python"]
+    subprocess.run([*pip, "-e", str(project)], check=True)
     sys.path.insert(0, str(project / "src"))
-    print(sys.version)
     subprocess.run(["nvidia-smi", "-L"], check=False)
 
 # %%
