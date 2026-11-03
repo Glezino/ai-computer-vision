@@ -15,7 +15,7 @@
 
 ## 4. CI
 
-- [ ] 4.1 Activar en `.github/workflows/ci.yml` el job `python` con uv en la raíz (ruff check, ruff format --check, pytest) y quitar los bloques de plantilla no usados; verificar que el job pasa en verde en el PR
+- [x] 4.1 Activar en `.github/workflows/ci.yml` el job `python` con uv en la raíz (ruff check, ruff format --check, pytest) y quitar los bloques de plantilla no usados; verificar que el job pasa en verde en el PR
 
 ## 5. Documentación
 
