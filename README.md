@@ -10,7 +10,15 @@ El trabajo se sigue en [GitHub Issues](https://github.com/Glezino/ai-computer-vi
 
 <!-- Requisitos y los dos o tres comandos para arrancar. El detalle operativo está en docs/ARCHITECTURE.md §7. -->
 
-[Pendiente: aún no hay código ejecutable.]
+Requisitos: [uv](https://docs.astral.sh/uv/) y GNU Make (en Windows, desde Git Bash). uv descarga Python 3.12 si no está instalado.
+
+```sh
+make install   # crea el entorno e instala las dependencias
+make lint      # ruff: lint y formato
+make test      # pytest
+```
+
+El resto de comandos está en [`docs/ARCHITECTURE.md` §7](docs/ARCHITECTURE.md#7-entorno-local-y-operación).
 
 ## Contribuir
 

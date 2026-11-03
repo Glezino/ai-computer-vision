@@ -13,3 +13,19 @@
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Python y uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Datos, modelos y resultados (ARCHITECTURE §4 y §6)
+data/
+models/
+outputs/
+runs/
+
+# Notebooks generados con jupytext (ADR-0002)
+*.ipynb
