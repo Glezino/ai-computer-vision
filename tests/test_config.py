@@ -12,7 +12,7 @@ def test_default_confidence_threshold_is_a_probability():
 
 
 def test_work_dirs_live_in_the_repository_root():
-    for path in (config.DATA_DIR, config.MODELS_DIR, config.OUTPUTS_DIR):
+    for path in (config.DATA_DIR, config.MODELS_DIR, config.OUTPUTS_DIR, config.RUNS_DIR):
         assert path.parent == config.ROOT_DIR
 
 
