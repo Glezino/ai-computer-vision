@@ -40,10 +40,10 @@ flowchart LR
 | `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
 | `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
 | `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Objetivo |
-| `report` | Calcula la exposición por marca a partir de las detecciones por fotograma (RF-05, RD-01…RD-04) | `outputs/` (informes) | `detection` | Objetivo |
+| `report` | Calcula la exposición por marca a partir de las detecciones por fotograma y la guarda en JSON (RF-05, RD-01…RD-04) | `outputs/` (`<vídeo>_report.json`) | `detection` (detecciones por fotograma) | Actual |
 | `notebooks` | Demo y presentación de punta a punta (RF-06) | — | Todos los anteriores | Objetivo |
 
-`report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada.
+`report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada. Recibe una lista de detecciones (marca y confianza) por fotograma, que `detection` debe producir; el comportamiento está en la spec [`report`](../openspec/specs/report/spec.md).
 
 ## 4. Estructura del repositorio
 
