@@ -1,9 +1,12 @@
-"""Detección de las marcas en una imagen y anotación con caja, marca y confianza (RF-03, RD-04).
+"""Detección de las marcas en imágenes y vídeos, anotadas con caja, marca y confianza.
 
-La inferencia la hace Ultralytics; el filtrado por umbral y el dibujo son funciones puras para
-poder probarlos sin modelo.
+Implementa RF-03, RF-04 y RD-04. La inferencia la hace Ultralytics; el filtrado por umbral y el
+dibujo son funciones puras para poder probarlos sin modelo.
 """
 
+import logging
+import math
+import time
 from collections.abc import Sequence
 from pathlib import Path
 from typing import NamedTuple
@@ -18,6 +21,10 @@ from logo_detector import config
 BRAND_COLORS: tuple[tuple[int, int, int], ...] = ((40, 40, 220), (200, 110, 20), (30, 30, 30))
 DEFAULT_COLOR = (0, 200, 0)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
+# MPEG-4 Part 2: el único códec de .mp4 que incluye opencv-python (no trae H.264).
+VIDEO_CODEC = cv2.VideoWriter_fourcc(*"mp4v")
+
+logger = logging.getLogger(__name__)
 
 
 class BrandBox(NamedTuple):
@@ -33,6 +40,15 @@ class ImageDetection(NamedTuple):
 
     image: np.ndarray
     detections: list[BrandBox]
+
+
+class VideoAnalysis(NamedTuple):
+    """Vídeo anotado, sus fps, las detecciones de cada fotograma y el tiempo de procesado."""
+
+    output: Path
+    fps: float
+    frames: list[list[BrandBox]]
+    elapsed_s: float
 
 
 def load_model(weights: Path = config.MODELS_DIR / config.BRAND_MODEL) -> YOLO:
@@ -57,6 +73,63 @@ def detect_image(
     result = model.predict(pixels, conf=threshold, imgsz=config.IMAGE_SIZE, verbose=False)[0]
     detections = select_detections(result, threshold)
     return ImageDetection(draw_detections(pixels, detections), detections)
+
+
+def analyze_video(
+    model: YOLO,
+    video: str | Path,
+    output: str | Path | None = None,
+    threshold: float = config.CONFIDENCE_THRESHOLD,
+) -> VideoAnalysis:
+    """Detecta las marcas en cada fotograma y escribe el vídeo anotado (RF-04).
+
+    Por defecto lo guarda en ``outputs/<vídeo>_annotated.mp4``. Las detecciones por fotograma
+    y los fps sirven tal cual para ``report.build_report``.
+    """
+    _check_threshold(threshold)
+    video = Path(video)
+    output = Path(output) if output else config.OUTPUTS_DIR / f"{video.stem}_annotated.mp4"
+    capture = cv2.VideoCapture(str(video)) if video.is_file() else None
+    writer = None
+    try:
+        if capture is None or not capture.isOpened():
+            raise ValueError(f"No se puede abrir el vídeo {video}: no existe o no es un vídeo.")
+        fps = capture.get(cv2.CAP_PROP_FPS)
+        ok, frame = capture.read()
+        if not ok or not math.isfinite(fps) or fps <= 0:
+            raise ValueError(f"El vídeo {video} no tiene fotogramas legibles o fps válidos.")
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        height, width = frame.shape[:2]
+        writer = cv2.VideoWriter(str(output), VIDEO_CODEC, fps, (width, height))
+        frames: list[list[BrandBox]] = []
+        start = time.perf_counter()
+        while ok:
+            annotated, detections = detect_image(model, frame, threshold)
+            writer.write(annotated)
+            frames.append(detections)
+            ok, frame = capture.read()
+        elapsed = time.perf_counter() - start
+    except BaseException:
+        if writer is not None:
+            writer.release()
+            writer = None
+            output.unlink(missing_ok=True)  # no dejar un vídeo parcial que parezca válido
+        raise
+    finally:
+        if writer is not None:
+            writer.release()
+        if capture is not None:
+            capture.release()
+
+    logger.info(
+        "%s: %d fotogramas en %.1f s (%.1f fotogramas/s)",
+        video.name,
+        len(frames),
+        elapsed,
+        len(frames) / elapsed if elapsed else 0,
+    )
+    return VideoAnalysis(output, fps, frames, elapsed)
 
 
 def select_detections(result, threshold: float = config.CONFIDENCE_THRESHOLD) -> list[BrandBox]:
