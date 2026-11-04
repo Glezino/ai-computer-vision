@@ -33,6 +33,14 @@ Para entrenar hace falta el dataset de las tres marcas:
 make data   # descarga de OpenLogo solo las imágenes de las marcas (~0,3 GB) y prepara data/openlogo/
 ```
 
+### Modelo de marcas
+
+La detección usa los pesos `models/brands.pt`, que no se versionan. Se obtienen entrenando en Google Colab con GPU (en CPU tardaría horas):
+
+1. `make notebooks` y sube `notebooks/02_training.ipynb` a Colab (*Archivo → Subir cuaderno*); el navegador de GitHub de Colab no lo encuentra porque los `.ipynb` no se versionan.
+2. *Entorno de ejecución → Cambiar tipo de entorno de ejecución → GPU*. Si entrenas una rama distinta de `dev`, cámbiala en `BRANCH`.
+3. *Ejecutar todo* (alrededor de una hora con una T4). Al terminar muestra las métricas y descarga `brands.pt`: cópialo a `models/`.
+
 ### Con Docker
 
 Requisitos: [Docker](https://docs.docker.com/get-docker/) y GNU Make; no hace falta instalar uv ni Python.
