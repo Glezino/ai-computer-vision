@@ -39,7 +39,7 @@ flowchart LR
 |---|---|---|---|---|
 | `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
 | `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
-| `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Objetivo |
+| `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Actual en imagen; vídeo, objetivo (#13) |
 | `report` | Calcula la exposición por marca a partir de las detecciones por fotograma y la guarda en JSON (RF-05, RD-01…RD-04) | `outputs/` (`<vídeo>_report.json`) | `detection` (detecciones por fotograma) | Actual |
 | `notebooks` | Demo y presentación de punta a punta (RF-06) | — | Todos los anteriores | Objetivo |
 
@@ -104,8 +104,8 @@ El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU 
 
 ## 8. Calidad: tests, CI y observabilidad
 
-- **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD) y la conversión de anotaciones de `dataset`.
-- **Integración:** detección sobre una imagen y un vídeo corto de ejemplo cuando haya pesos; no se ejecuta en el CI.
+- **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD), la conversión de anotaciones de `dataset` y, en `detection`, el filtrado por umbral y el dibujo con un modelo simulado.
+- **Integración:** detección con `brands.pt` sobre una imagen de test del dataset (y, cuando exista, un vídeo corto); se salta si faltan los pesos o el dataset, por lo que no se ejecuta en el CI.
 - **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático. Último entrenamiento (2026-11-04, #10): YOLO26 nano, `TRAIN_CONFIG` sin cambios, dataset OpenLogo en la revisión de `config.py`, Colab (Tesla T4, Python 3.13, torch 2.11 con CUDA, Ultralytics 8.4.202). Validación evaluada en local con CPU; en Colab da lo mismo con diferencias de mAP ≤ 0,002:
 
   | Marca | Precisión | Recall | mAP@0.5 | mAP@0.5:0.95 |
