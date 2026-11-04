@@ -7,12 +7,14 @@ import pytest
 from logo_detector import config
 from logo_detector.detection import (
     BrandBox,
+    analyze_video,
     detect_image,
     draw_detections,
     label,
     load_model,
     select_detections,
 )
+from logo_detector.report import build_report
 
 NAMES = {0: "coca-cola", 1: "pepsi", 2: "adidas"}
 
@@ -178,6 +180,140 @@ def test_load_model_without_weights_explains_how_to_get_them(tmp_path):
         load_model(weights)
 
     assert str(weights) in str(error.value)
+
+
+# Vídeo
+
+VIDEO_FRAMES, VIDEO_FPS, VIDEO_SIZE = 50, 25, (320, 240)
+PEPSI = fake_result((1, 0.87, 40, 40, 200, 120))
+
+
+class SequenceModel:
+    """Modelo que devuelve ``results[i]`` en la llamada i y un resultado vacío después."""
+
+    def __init__(self, *results):
+        self.results = list(results)
+        self.calls = 0
+
+    def predict(self, image, **kwargs):
+        result = self.results[self.calls] if self.calls < len(self.results) else fake_result()
+        self.calls += 1
+        return [result]
+
+
+@pytest.fixture
+def video(tmp_path):
+    """Vídeo negro de 50 fotogramas a 25 fps y 320×240."""
+    path = tmp_path / "clip.mp4"
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), VIDEO_FPS, VIDEO_SIZE)
+    for _ in range(VIDEO_FRAMES):
+        writer.write(np.zeros((VIDEO_SIZE[1], VIDEO_SIZE[0], 3), dtype=np.uint8))
+    writer.release()
+    return path
+
+
+def read_video(path):
+    capture = cv2.VideoCapture(str(path))
+    fps = capture.get(cv2.CAP_PROP_FPS)
+    frames = []
+    while True:
+        ok, frame = capture.read()
+        if not ok:
+            break
+        frames.append(frame)
+    capture.release()
+    return fps, frames
+
+
+def test_analyze_video_writes_annotated_video_with_same_frames_fps_and_size(video, tmp_path):
+    output = tmp_path / "out.mp4"
+
+    analysis = analyze_video(SequenceModel(*[PEPSI] * 10), video, output)
+
+    fps, frames = read_video(output)
+    assert analysis.output == output
+    assert analysis.fps == VIDEO_FPS
+    assert fps == VIDEO_FPS
+    assert len(frames) == VIDEO_FRAMES
+    assert all(frame.shape == (VIDEO_SIZE[1], VIDEO_SIZE[0], 3) for frame in frames)
+    assert analysis.elapsed_s >= 0
+
+
+def test_analyze_video_returns_detections_per_frame(video, tmp_path):
+    analysis = analyze_video(SequenceModel(*[PEPSI] * 10), video, tmp_path / "out.mp4")
+
+    assert len(analysis.frames) == VIDEO_FRAMES
+    assert all([d.brand for d in frame] == ["pepsi"] for frame in analysis.frames[:10])
+    assert all(frame == [] for frame in analysis.frames[10:])
+
+
+def test_analyze_video_draws_detections_only_on_their_frames(video, tmp_path):
+    output = tmp_path / "out.mp4"
+
+    analyze_video(SequenceModel(*[PEPSI] * 10), video, output)
+
+    _, frames = read_video(output)
+    assert all(frame.mean() > 1 for frame in frames[:10])  # caja y etiqueta de color
+    assert all(frame.mean() < 0.5 for frame in frames[10:])  # negro, salvo ruido del códec
+
+
+def test_analyze_video_without_logos_returns_empty_detections(video, tmp_path):
+    analysis = analyze_video(SequenceModel(), video, tmp_path / "out.mp4")
+
+    assert analysis.frames == [[]] * VIDEO_FRAMES
+
+
+def test_analyze_video_saves_to_outputs_by_default(video, tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "OUTPUTS_DIR", tmp_path / "outputs")
+
+    analysis = analyze_video(SequenceModel(), video)
+
+    assert analysis.output == tmp_path / "outputs" / "clip_annotated.mp4"
+    assert analysis.output.is_file()
+
+
+def test_analysis_feeds_the_exposure_report_without_conversion(video, tmp_path):
+    analysis = analyze_video(SequenceModel(*[PEPSI] * 10), video, tmp_path / "out.mp4")
+
+    report = build_report(video.name, analysis.frames, analysis.fps)
+
+    assert report.duration_s == 2
+    pepsi = next(row for row in report.brands if row.brand == "pepsi")
+    assert (pepsi.detected, pepsi.seconds, pepsi.percentage) == (True, 0.4, 20)
+
+
+def test_analyze_video_with_a_file_that_is_not_a_video_names_it(tmp_path):
+    path = tmp_path / "notes.mp4"
+    path.write_text("no soy un vídeo")
+    output = tmp_path / "out.mp4"
+
+    with pytest.raises(ValueError, match="notes.mp4"):
+        analyze_video(SequenceModel(), path, output)
+
+    assert not output.exists()
+
+
+def test_analyze_video_with_missing_path_names_it(tmp_path):
+    with pytest.raises(ValueError, match="missing.mp4"):
+        analyze_video(SequenceModel(), tmp_path / "missing.mp4", tmp_path / "out.mp4")
+
+
+def test_analyze_video_rejects_invalid_threshold(video, tmp_path):
+    with pytest.raises(ValueError, match="entre 0 y 1"):
+        analyze_video(SequenceModel(), video, tmp_path / "out.mp4", threshold=1.5)
+
+
+def test_analyze_video_removes_the_partial_output_when_detection_fails(video, tmp_path):
+    class BrokenModel:
+        def predict(self, image, **kwargs):
+            raise RuntimeError("fallo del modelo")
+
+    output = tmp_path / "out.mp4"
+
+    with pytest.raises(RuntimeError):
+        analyze_video(BrokenModel(), video, output)
+
+    assert not output.exists()
 
 
 # Integración con el modelo entrenado (no corre en el CI: los pesos y el dataset no se versionan)
