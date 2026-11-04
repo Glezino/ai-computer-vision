@@ -7,7 +7,7 @@ dibujo son funciones puras para poder probarlos sin modelo.
 import logging
 import math
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import NamedTuple
 
@@ -23,6 +23,8 @@ DEFAULT_COLOR = (0, 200, 0)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 # MPEG-4 Part 2: el único códec de .mp4 que incluye opencv-python (no trae H.264).
 VIDEO_CODEC = cv2.VideoWriter_fourcc(*"mp4v")
+# VP8 en WebM: lo reproducen los navegadores y opencv-python lo incluye (vista previa).
+WEB_CODEC = cv2.VideoWriter_fourcc(*"VP80")
 
 logger = logging.getLogger(__name__)
 
@@ -89,39 +91,16 @@ def analyze_video(
     _check_threshold(threshold)
     video = Path(video)
     output = Path(output) if output else config.OUTPUTS_DIR / f"{video.stem}_annotated.mp4"
-    capture = cv2.VideoCapture(str(video)) if video.is_file() else None
-    writer = None
-    try:
-        if capture is None or not capture.isOpened():
-            raise ValueError(f"No se puede abrir el vídeo {video}: no existe o no es un vídeo.")
-        fps = capture.get(cv2.CAP_PROP_FPS)
-        ok, frame = capture.read()
-        if not ok or not math.isfinite(fps) or fps <= 0:
-            raise ValueError(f"El vídeo {video} no tiene fotogramas legibles o fps válidos.")
+    frames: list[list[BrandBox]] = []
 
-        output.parent.mkdir(parents=True, exist_ok=True)
-        height, width = frame.shape[:2]
-        writer = cv2.VideoWriter(str(output), VIDEO_CODEC, fps, (width, height))
-        frames: list[list[BrandBox]] = []
-        start = time.perf_counter()
-        while ok:
-            annotated, detections = detect_image(model, frame, threshold)
-            writer.write(annotated)
-            frames.append(detections)
-            ok, frame = capture.read()
-        elapsed = time.perf_counter() - start
-    except BaseException:
-        if writer is not None:
-            writer.release()
-            writer = None
-            output.unlink(missing_ok=True)  # no dejar un vídeo parcial que parezca válido
-        raise
-    finally:
-        if writer is not None:
-            writer.release()
-        if capture is not None:
-            capture.release()
+    def annotate(frame: np.ndarray) -> np.ndarray:
+        annotated, detections = detect_image(model, frame, threshold)
+        frames.append(detections)
+        return annotated
 
+    start = time.perf_counter()
+    fps = _transform_video(video, output, VIDEO_CODEC, annotate)
+    elapsed = time.perf_counter() - start
     logger.info(
         "%s: %d fotogramas en %.1f s (%.1f fotogramas/s)",
         video.name,
@@ -130,6 +109,25 @@ def analyze_video(
         len(frames) / elapsed if elapsed else 0,
     )
     return VideoAnalysis(output, fps, frames, elapsed)
+
+
+def web_preview(video: str | Path, output: str | Path | None = None, max_width: int = 960) -> Path:
+    """Copia el vídeo en WebM (VP8), que el navegador reproduce, reducido a ``max_width``.
+
+    Por defecto se guarda junto al vídeo con extensión ``.webm``. Conserva fotogramas y fps.
+    """
+    video = Path(video)
+    output = Path(output) if output else video.with_suffix(".webm")
+
+    def shrink(frame: np.ndarray) -> np.ndarray:
+        height, width = frame.shape[:2]
+        if width <= max_width:
+            return frame
+        new_height = round(height * max_width / width / 2) * 2  # par, como piden los códecs
+        return cv2.resize(frame, (max_width, new_height), interpolation=cv2.INTER_AREA)
+
+    _transform_video(video, output, WEB_CODEC, shrink)
+    return output
 
 
 def select_detections(result, threshold: float = config.CONFIDENCE_THRESHOLD) -> list[BrandBox]:
@@ -186,6 +184,45 @@ def draw_detections(image: np.ndarray, detections: Sequence[BrandBox]) -> np.nda
 def _check_threshold(threshold: float) -> None:
     if not 0 <= threshold <= 1:
         raise ValueError(f"El umbral de confianza debe estar entre 0 y 1, no {threshold}.")
+
+
+def _transform_video(
+    video: Path, output: Path, codec: int, transform: Callable[[np.ndarray], np.ndarray]
+) -> float:
+    """Escribe en ``output`` cada fotograma de ``video`` tras ``transform``; devuelve los fps.
+
+    Falla con la ruta si el vídeo no existe o no es legible, y no deja un vídeo parcial.
+    """
+    capture = cv2.VideoCapture(str(video)) if video.is_file() else None
+    writer = None
+    try:
+        if capture is None or not capture.isOpened():
+            raise ValueError(f"No se puede abrir el vídeo {video}: no existe o no es un vídeo.")
+        fps = capture.get(cv2.CAP_PROP_FPS)
+        ok, frame = capture.read()
+        if not ok or not math.isfinite(fps) or fps <= 0:
+            raise ValueError(f"El vídeo {video} no tiene fotogramas legibles o fps válidos.")
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        while ok:
+            result = transform(frame)
+            if writer is None:
+                height, width = result.shape[:2]
+                writer = cv2.VideoWriter(str(output), codec, fps, (width, height))
+            writer.write(result)
+            ok, frame = capture.read()
+    except BaseException:
+        if writer is not None:
+            writer.release()
+            writer = None
+            output.unlink(missing_ok=True)  # no dejar un vídeo parcial que parezca válido
+        raise
+    finally:
+        if writer is not None:
+            writer.release()
+        if capture is not None:
+            capture.release()
+    return fps
 
 
 def _read_image(path: str | Path) -> np.ndarray:
