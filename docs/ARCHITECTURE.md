@@ -29,7 +29,7 @@ flowchart LR
 | Procesado de imagen y vídeo | OpenCV | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Descarga del dataset | `huggingface_hub` (descarga selectiva de `Voxel51/OpenLogo`) | Actual | [ADR-0003](ADR/0003-selective-openlogo-download.md) |
 | Notebooks | Jupyter + jupytext (formato percent) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
-| Entrenamiento | Google Colab con GPU | Objetivo | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Entrenamiento | Google Colab con GPU | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
 | Entorno de ejecución | Docker (imagen CPU) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
 | Calidad | ruff, pytest | Actual | — |
 
@@ -38,7 +38,7 @@ flowchart LR
 | Componente | Responsabilidad | Datos que posee | Depende de | Estado |
 |---|---|---|---|---|
 | `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
-| `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Objetivo |
+| `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
 | `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Objetivo |
 | `report` | Calcula la exposición por marca a partir de las detecciones por fotograma (RF-05, RD-01…RD-04) | `outputs/` (informes) | `detection` | Objetivo |
 | `notebooks` | Demo y presentación de punta a punta (RF-06) | — | Todos los anteriores | Objetivo |
@@ -100,13 +100,22 @@ El `Makefile` es la fuente de verdad de los comandos. Los principales:
 - `make lint`, `make format` y `make test`: ruff (lint y formato) y pytest.
 - `make docker-build` y `make docker-run`: construyen y arrancan el contenedor con Jupyter.
 
-El entrenamiento se lanza desde el notebook de entrenamiento en Google Colab, que guarda `best.pt`; se copia a `models/`.
+El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU (el `.ipynb` se sube a mano; Colab usa Python 3.13 y el paquete se instala con `--ignore-requires-python`). Usa la configuración de `training.TRAIN_CONFIG`, guarda los mejores pesos como `brands.pt` y los descarga; se copian a `models/`. Los pasos están en el README.
 
 ## 8. Calidad: tests, CI y observabilidad
 
 - **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD) y la conversión de anotaciones de `dataset`.
 - **Integración:** detección sobre una imagen y un vídeo corto de ejemplo cuando haya pesos; no se ejecuta en el CI.
-- **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático.
+- **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático. Último entrenamiento (2026-11-04, #10): YOLO26 nano, `TRAIN_CONFIG` sin cambios, dataset OpenLogo en la revisión de `config.py`, Colab (Tesla T4, Python 3.13, torch 2.11 con CUDA, Ultralytics 8.4.202). Validación evaluada en local con CPU; en Colab da lo mismo con diferencias de mAP ≤ 0,002:
+
+  | Marca | Precisión | Recall | mAP@0.5 | mAP@0.5:0.95 |
+  |---|---|---|---|---|
+  | Todas | 0,846 | 0,786 | **0,851** | 0,543 |
+  | Coca-Cola | 0,845 | 0,822 | 0,877 | 0,583 |
+  | Pepsi | 0,811 | 0,795 | 0,827 | 0,595 |
+  | Adidas | 0,882 | 0,740 | 0,850 | 0,451 |
+
+  Cumple RNF-03 (mAP@0.5 ≥ 0,6). Inferencia en CPU (Ryzen 5 5600): ~28 ms por imagen de 640 px.
 - **CI:** `openspec validate`, ruff (lint y formato), pytest y `docker build`.
 - **Observabilidad:** logs en consola y métricas de entrenamiento de Ultralytics en `runs/`.
 
