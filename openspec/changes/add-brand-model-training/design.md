@@ -63,7 +63,8 @@ Motivación en `proposal.md`; comportamiento en `specs/training/spec.md`.
 
 ## Risks / Trade-offs
 
-- [Colab usa una versión de Python distinta de 3.12 y `pip install -e .` falla por `requires-python`] → El notebook muestra la versión. Si falla, se instala con `--ignore-requires-python`, porque el paquete no usa nada específico de 3.12, y se documenta.
+- [Colab usa una versión de Python distinta de 3.12 y `pip install -e .` falla por `requires-python`] → Ocurrió: Colab usa Python 3.13. El notebook muestra la versión e instala con `--ignore-requires-python`, porque el paquete no usa nada específico de 3.12. El entrenamiento funcionó y queda documentado en ARCHITECTURE §7.
+- [El entorno de Colab no tiene GPU] → El notebook lo comprueba con `torch.cuda.is_available()` y se para con un mensaje que indica cómo activarla.
 - [nano no alcanza mAP@0.5 ≥ 0,6] → Se entrena small y se documenta el impacto en RNF-02. Si tampoco llega, se documenta la desviación, como permite la Issue.
 - [Una sesión gratuita de Colab se corta durante el entrenamiento] → `patience=20` acorta el entrenamiento. Si se corta, Ultralytics permite `resume=True` desde `runs/brands/weights/last.pt`.
 - [Los pesos no están versionados y solo los tiene quien entrena] → Se documenta cómo obtenerlos. Publicarlos como asset de release se propondrá en la fase de release.
