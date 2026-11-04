@@ -41,7 +41,7 @@ flowchart LR
 | `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
 | `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Actual |
 | `report` | Calcula la exposición por marca a partir de las detecciones por fotograma y la guarda en JSON (RF-05, RD-01…RD-04) | `outputs/` (`<vídeo>_report.json`) | `detection` (detecciones por fotograma) | Actual |
-| `notebooks` | Demo y presentación de punta a punta (RF-06) | — | Todos los anteriores | Objetivo |
+| `notebooks` | Demo y presentación de punta a punta (RF-06): `01_quickstart`, `02_training` y `03_demo` | — | Todos los anteriores | Actual |
 
 `report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada. Recibe una lista de detecciones (marca y confianza) por fotograma; las de `detection` le sirven tal cual porque tienen esos campos (más la caja). El comportamiento está en las specs [`detection`](../openspec/specs/detection/spec.md) y [`report`](../openspec/specs/report/spec.md).
 
@@ -77,18 +77,20 @@ sequenceDiagram
         D->>D: escribir el fotograma anotado (mp4v)
     end
     D-->>N: outputs/<vídeo>_annotated.mp4 + detecciones por fotograma + fps + tiempo
+    N->>D: web_preview(vídeo anotado)
+    D-->>N: outputs/<vídeo>_annotated.webm (VP8, máx. 960 px)
     N->>R: build_report(vídeo, detecciones, fps)
     R-->>N: informe por marca (s, %)
     N->>N: mostrar tabla y guardar JSON
 ```
 
-El vídeo anotado conserva resolución, fps y número de fotogramas, y no lleva audio. Se escribe con `mp4v`, el único códec de `.mp4` de `opencv-python`: se reproduce en reproductores de escritorio, pero no en el navegador.
+El vídeo anotado conserva resolución, fps y número de fotogramas, y no lleva audio. Se escribe con `mp4v`, el único códec de `.mp4` de `opencv-python`: se reproduce en reproductores de escritorio, pero no en el navegador. Para verlo en el notebook, `web_preview` genera una copia WebM (VP8, que `opencv-python` incluye) reducida a 960 px de ancho.
 
 Errores: si el archivo no existe, no se puede abrir como vídeo o no tiene fotogramas legibles, `detection` lanza un error con la ruta y no deja un vídeo parcial (RF-04). Si no existen los pesos, se indica cómo obtenerlos.
 
 ## 6. Datos, configuración y secretos
 
-- **Persistencia:** archivos locales. `data/` guarda el dataset; `models/`, los pesos; `outputs/`, los vídeos anotados y los informes JSON. Nada de eso se versiona. No hay base de datos ([PROJECT §6](PROJECT.md#6-alcance)).
+- **Persistencia:** archivos locales. `data/` guarda el dataset y, en `data/videos/`, los vídeos de ejemplo de la demo; `models/`, los pesos; `outputs/`, los vídeos anotados y los informes JSON. Nada de eso se versiona. No hay base de datos ([PROJECT §6](PROJECT.md#6-alcance)).
 - **Configuración:** parámetros por defecto en `config.py` (marcas, rutas, umbral de confianza del 50 %, tamaño de imagen); se pueden sobrescribir por argumento.
 - **Secretos:** ninguno. OpenLogo se descarga sin autenticación.
 - **Datos enviados a terceros:** ninguno; solo se descargan el dataset y los pesos preentrenados.
@@ -109,6 +111,7 @@ El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU 
 
 - **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD), la conversión de anotaciones de `dataset` y, en `detection`, el filtrado por umbral, el dibujo y el análisis de vídeo (sobre un vídeo sintético generado en el test) con un modelo simulado.
 - **Integración:** detección con `brands.pt` sobre una imagen de test del dataset; se salta si faltan los pesos o el dataset, por lo que no se ejecuta en el CI.
+- **Demo de punta a punta:** `03_demo` se ejecuta a mano con `jupyter nbconvert --to notebook --execute`, en local y en Docker, con los pesos y un vídeo de `data/videos/`; no está en el CI porque ninguno de los dos se versiona.
 - **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático. Último entrenamiento (2026-11-04, #10): YOLO26 nano, `TRAIN_CONFIG` sin cambios, dataset OpenLogo en la revisión de `config.py`, Colab (Tesla T4, Python 3.13, torch 2.11 con CUDA, Ultralytics 8.4.202). Validación evaluada en local con CPU; en Colab da lo mismo con diferencias de mAP ≤ 0,002:
 
   | Marca | Precisión | Recall | mAP@0.5 | mAP@0.5:0.95 |
