@@ -14,6 +14,8 @@ DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR / "models"
 OUTPUTS_DIR = ROOT_DIR / "outputs"
 RUNS_DIR = ROOT_DIR / "runs"
+# Vídeos de ejemplo de la demo (RF-06); los aporta la persona y no se versionan.
+VIDEOS_DIR = DATA_DIR / "videos"
 
 # Umbral de confianza por defecto de las detecciones (RD-04).
 CONFIDENCE_THRESHOLD = 0.5

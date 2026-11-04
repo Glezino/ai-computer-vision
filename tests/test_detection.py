@@ -13,6 +13,7 @@ from logo_detector.detection import (
     label,
     load_model,
     select_detections,
+    web_preview,
 )
 from logo_detector.report import build_report
 
@@ -314,6 +315,46 @@ def test_analyze_video_removes_the_partial_output_when_detection_fails(video, tm
         analyze_video(BrokenModel(), video, output)
 
     assert not output.exists()
+
+
+# Vista previa web
+
+
+def write_video(path, frames, fps, size):
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), fps, size)
+    for _ in range(frames):
+        writer.write(np.zeros((size[1], size[0], 3), dtype=np.uint8))
+    writer.release()
+    return path
+
+
+def test_web_preview_downscales_a_wide_video_keeping_frames_and_fps(tmp_path):
+    wide = write_video(tmp_path / "wide.mp4", 50, 25, (1280, 720))
+
+    preview = web_preview(wide, tmp_path / "wide.webm", max_width=640)
+
+    fps, frames = read_video(preview)
+    assert preview == tmp_path / "wide.webm"
+    assert fps == 25
+    assert len(frames) == 50
+    assert frames[0].shape == (360, 640, 3)
+
+
+def test_web_preview_keeps_the_size_of_a_narrow_video(video):
+    preview = web_preview(video, max_width=640)
+
+    _, frames = read_video(preview)
+    assert preview == video.with_suffix(".webm")
+    assert len(frames) == VIDEO_FRAMES
+    assert frames[0].shape == (VIDEO_SIZE[1], VIDEO_SIZE[0], 3)
+
+
+def test_web_preview_with_a_file_that_is_not_a_video_names_it(tmp_path):
+    path = tmp_path / "notes.mp4"
+    path.write_text("no soy un vídeo")
+
+    with pytest.raises(ValueError, match="notes.mp4"):
+        web_preview(path)
 
 
 # Integración con el modelo entrenado (no corre en el CI: los pesos y el dataset no se versionan)
