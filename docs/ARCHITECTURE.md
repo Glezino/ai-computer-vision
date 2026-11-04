@@ -39,11 +39,11 @@ flowchart LR
 |---|---|---|---|---|
 | `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
 | `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
-| `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Actual en imagen; vídeo, objetivo (#13) |
+| `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Actual |
 | `report` | Calcula la exposición por marca a partir de las detecciones por fotograma y la guarda en JSON (RF-05, RD-01…RD-04) | `outputs/` (`<vídeo>_report.json`) | `detection` (detecciones por fotograma) | Actual |
 | `notebooks` | Demo y presentación de punta a punta (RF-06) | — | Todos los anteriores | Objetivo |
 
-`report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada. Recibe una lista de detecciones (marca y confianza) por fotograma, que `detection` debe producir; el comportamiento está en la spec [`report`](../openspec/specs/report/spec.md).
+`report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada. Recibe una lista de detecciones (marca y confianza) por fotograma; las de `detection` le sirven tal cual porque tienen esos campos (más la caja). El comportamiento está en las specs [`detection`](../openspec/specs/detection/spec.md) y [`report`](../openspec/specs/report/spec.md).
 
 ## 4. Estructura del repositorio
 
@@ -71,17 +71,20 @@ sequenceDiagram
     participant N as notebook
     participant D as detection
     participant R as report
-    N->>D: analizar(vídeo, pesos, umbral)
-    loop cada fotograma
-        D->>D: predecir y dibujar detecciones
+    N->>D: load_model() y analyze_video(modelo, vídeo, umbral)
+    loop cada fotograma (OpenCV)
+        D->>D: detect_image: predecir, filtrar por umbral y dibujar
+        D->>D: escribir el fotograma anotado (mp4v)
     end
-    D-->>N: vídeo anotado + detecciones por fotograma + fps
-    N->>R: construir informe(detecciones, fps, nº fotogramas)
+    D-->>N: outputs/<vídeo>_annotated.mp4 + detecciones por fotograma + fps + tiempo
+    N->>R: build_report(vídeo, detecciones, fps)
     R-->>N: informe por marca (s, %)
     N->>N: mostrar tabla y guardar JSON
 ```
 
-Errores: si el archivo no se puede abrir como vídeo, `detection` lanza un error con un mensaje claro (RF-04). Si no existen los pesos, se indica cómo obtenerlos.
+El vídeo anotado conserva resolución, fps y número de fotogramas, y no lleva audio. Se escribe con `mp4v`, el único códec de `.mp4` de `opencv-python`: se reproduce en reproductores de escritorio, pero no en el navegador.
+
+Errores: si el archivo no existe, no se puede abrir como vídeo o no tiene fotogramas legibles, `detection` lanza un error con la ruta y no deja un vídeo parcial (RF-04). Si no existen los pesos, se indica cómo obtenerlos.
 
 ## 6. Datos, configuración y secretos
 
@@ -104,8 +107,8 @@ El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU 
 
 ## 8. Calidad: tests, CI y observabilidad
 
-- **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD), la conversión de anotaciones de `dataset` y, en `detection`, el filtrado por umbral y el dibujo con un modelo simulado.
-- **Integración:** detección con `brands.pt` sobre una imagen de test del dataset (y, cuando exista, un vídeo corto); se salta si faltan los pesos o el dataset, por lo que no se ejecuta en el CI.
+- **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD), la conversión de anotaciones de `dataset` y, en `detection`, el filtrado por umbral, el dibujo y el análisis de vídeo (sobre un vídeo sintético generado en el test) con un modelo simulado.
+- **Integración:** detección con `brands.pt` sobre una imagen de test del dataset; se salta si faltan los pesos o el dataset, por lo que no se ejecuta en el CI.
 - **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático. Último entrenamiento (2026-11-04, #10): YOLO26 nano, `TRAIN_CONFIG` sin cambios, dataset OpenLogo en la revisión de `config.py`, Colab (Tesla T4, Python 3.13, torch 2.11 con CUDA, Ultralytics 8.4.202). Validación evaluada en local con CPU; en Colab da lo mismo con diferencias de mAP ≤ 0,002:
 
   | Marca | Precisión | Recall | mAP@0.5 | mAP@0.5:0.95 |
@@ -116,6 +119,7 @@ El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU 
   | Adidas | 0,882 | 0,740 | 0,850 | 0,451 |
 
   Cumple RNF-03 (mAP@0.5 ≥ 0,6). Inferencia en CPU (Ryzen 5 5600): ~28 ms por imagen de 640 px.
+- **Tiempo de vídeo (RNF-02):** medido a mano, no es un test automático. Un vídeo de 1 minuto a 30 fps y 1280×720 (1800 fotogramas, montado con imágenes de test del dataset) se analiza con `brands.pt` en 74 s en CPU (Ryzen 5 5600), unos 24 fotogramas/s, frente al límite de 5 minutos. Un vídeo real de móvil (15 s, 30 fps, 478×850) tarda 21,5 s, unos 21 fotogramas/s.
 - **CI:** `openspec validate`, ruff (lint y formato), pytest y `docker build`.
 - **Observabilidad:** logs en consola y métricas de entrenamiento de Ultralytics en `runs/`.
 
