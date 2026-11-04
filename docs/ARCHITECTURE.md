@@ -2,70 +2,135 @@
 
 > Cómo está construido el sistema y hacia dónde va. Mapa de documentación: [WORKFLOW](../WORKFLOW.md#2-mapa-de-documentación).
 
-<!--
-- Marca cada elemento como Actual (existe en el código), Objetivo (decidido, aún sin construir) o Candidata (por decidir).
-- El porqué de las decisiones vive en los ADR, el detalle de las interfaces en CONTRACTS y el comportamiento en openspec/specs/. Aquí se resumen y se enlazan.
-- Empieza con lo decidido y crece con cada historia que cambie la arquitectura (WORKFLOW §2, «Qué actualizar cuando algo cambia»).
--->
-
 ## 1. Visión general
 
-[Qué piezas forman el sistema y cómo se relacionan, en un párrafo.]
+Un paquete Python (`logo_detector`) agrupa todo el sistema. Sus módulos preparan el dataset, reentrenan un detector YOLO preentrenado, aplican el modelo a imágenes y vídeos, y calculan el informe de exposición. Los notebooks de demo (`.py` con jupytext, convertidos a `.ipynb` con `make`) solo orquestan esos módulos y muestran los resultados. El entrenamiento se ejecuta en una GPU de Google Colab; la inferencia y la demo, en local o en Docker con CPU.
 
 ```mermaid
 flowchart LR
-    U[Usuario] --> A[Componente A]
-    A --> B[Componente B]
+    OL[(OpenLogo<br/>Hugging Face)] --> DS[dataset]
+    DS -->|imágenes + labels YOLO| TR[training]
+    TR -->|pesos best.pt| DT[detection]
+    IMG[/Imagen o vídeo/] --> DT
+    DT -->|detecciones por fotograma| RP[report]
+    DT --> OUT[/Imagen o vídeo anotado/]
+    RP --> INF[/Informe JSON/]
+    NB[notebooks] -.orquesta.-> DS & TR & DT & RP
 ```
 
 ## 2. Stack
 
 | Área | Tecnología | Estado | Decisión |
 |---|---|---|---|
-| [Área] | [Tecnología] | Candidata | [ADR-0001 o —] |
+| Lenguaje | Python 3.12 | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Dependencias | uv (`pyproject.toml` + `uv.lock`) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Detector | Ultralytics YOLO, variante nano o small preentrenada en COCO | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Deep learning | PyTorch para CPU (índice de PyTorch), dependencia de Ultralytics | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Procesado de imagen y vídeo | OpenCV | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Descarga del dataset | `huggingface_hub` (descarga selectiva de `Voxel51/OpenLogo`) | Actual | [ADR-0003](ADR/0003-selective-openlogo-download.md) |
+| Notebooks | Jupyter + jupytext (formato percent) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Entrenamiento | Google Colab con GPU | Actual | [ADR-0001](ADR/0001-ultralytics-yolo-detector.md) |
+| Entorno de ejecución | Docker (imagen CPU) | Actual | [ADR-0002](ADR/0002-python-environment-and-notebooks.md) |
+| Calidad | ruff, pytest | Actual | — |
 
 ## 3. Componentes
 
-<!-- El nombre de cada componente sirve como scope en los commits (CONTRIBUTING §5). -->
-
 | Componente | Responsabilidad | Datos que posee | Depende de | Estado |
 |---|---|---|---|---|
-| [Nombre] | [Qué hace y qué no hace] | [Datos] | [Componentes o servicios] | Objetivo |
+| `dataset` | Descarga OpenLogo, filtra las tres marcas, convierte las anotaciones a formato YOLO y crea las particiones (RF-01) | `data/` | OpenLogo, `huggingface_hub` | Actual |
+| `training` | Reentrena el detector con preprocesamiento y aumento de datos, y reporta métricas (RF-02) | `models/` (pesos), `runs/` | `dataset`, Ultralytics | Actual |
+| `detection` | Aplica el modelo a imágenes y vídeos y dibuja bounding box, marca y confianza (RF-03, RF-04) | — | `training` (pesos), OpenCV | Actual |
+| `report` | Calcula la exposición por marca a partir de las detecciones por fotograma y la guarda en JSON (RF-05, RD-01…RD-04) | `outputs/` (`<vídeo>_report.json`) | `detection` (detecciones por fotograma) | Actual |
+| `notebooks` | Demo y presentación de punta a punta (RF-06): `01_quickstart`, `02_training` y `03_demo` | — | Todos los anteriores | Actual |
+
+`report` es lógica pura (detecciones → informe), sin dependencia del modelo, para poder probarla de forma aislada. Recibe una lista de detecciones (marca y confianza) por fotograma; las de `detection` le sirven tal cual porque tienen esos campos (más la caja). El comportamiento está en las specs [`detection`](../openspec/specs/detection/spec.md) y [`report`](../openspec/specs/report/spec.md).
 
 ## 4. Estructura del repositorio
 
 ```text
 .
-├── [componente-a]/
-├── [componente-b]/
+├── src/logo_detector/   # dataset.py, training.py, detection.py, report.py, config.py
+├── notebooks/           # *.py en formato jupytext; los .ipynb se generan y no se versionan
+├── tests/
+├── data/                # dataset descargado y preparado (no versionado)
+├── models/              # pesos entrenados (no versionado; se publican como asset de release)
+├── outputs/             # vídeos anotados e informes (no versionado)
+├── Dockerfile
+├── Makefile
+├── pyproject.toml
 ├── docs/
 └── openspec/
 ```
 
 ## 5. Flujos principales
 
-<!-- Un diagrama por cada flujo relevante, con sus casos de error. Enlaza el contrato de cada interfaz. -->
+### Análisis de un vídeo
+
+```mermaid
+sequenceDiagram
+    participant N as notebook
+    participant D as detection
+    participant R as report
+    N->>D: load_model() y analyze_video(modelo, vídeo, umbral)
+    loop cada fotograma (OpenCV)
+        D->>D: detect_image: predecir, filtrar por umbral y dibujar
+        D->>D: escribir el fotograma anotado (mp4v)
+    end
+    D-->>N: outputs/<vídeo>_annotated.mp4 + detecciones por fotograma + fps + tiempo
+    N->>D: web_preview(vídeo anotado)
+    D-->>N: outputs/<vídeo>_annotated.webm (VP8, máx. 960 px)
+    N->>R: build_report(vídeo, detecciones, fps)
+    R-->>N: informe por marca (s, %)
+    N->>N: mostrar tabla y guardar JSON
+```
+
+El vídeo anotado conserva resolución, fps y número de fotogramas, y no lleva audio. Se escribe con `mp4v`, el único códec de `.mp4` de `opencv-python`: se reproduce en reproductores de escritorio, pero no en el navegador. Para verlo en el notebook, `web_preview` genera una copia WebM (VP8, que `opencv-python` incluye) reducida a 960 px de ancho.
+
+Errores: si el archivo no existe, no se puede abrir como vídeo o no tiene fotogramas legibles, `detection` lanza un error con la ruta y no deja un vídeo parcial (RF-04). Si no existen los pesos, se indica cómo obtenerlos.
 
 ## 6. Datos, configuración y secretos
 
-- **Persistencia:** [Qué se guarda, dónde y durante cuánto tiempo.]
-- **Configuración:** [Variables de cada componente. `.env.example` contiene solo nombres y valores inocuos.]
-- **Secretos:** [Qué componente los posee. Nunca van en el cliente ni en el repositorio.]
-- **Datos enviados a terceros:** [Qué se envía, a quién y cuándo.]
+- **Persistencia:** archivos locales. `data/` guarda el dataset y, en `data/videos/`, los vídeos de ejemplo de la demo; `models/`, los pesos; `outputs/`, los vídeos anotados y los informes JSON. Nada de eso se versiona. No hay base de datos ([PROJECT §6](PROJECT.md#6-alcance)).
+- **Configuración:** parámetros por defecto en `config.py` (marcas, rutas, umbral de confianza del 50 %, tamaño de imagen); se pueden sobrescribir por argumento.
+- **Secretos:** ninguno. OpenLogo se descarga sin autenticación.
+- **Datos enviados a terceros:** ninguno; solo se descargan el dataset y los pesos preentrenados.
 
 ## 7. Entorno local y operación
 
-<!-- Requisitos previos, cómo arrancar todo o cada componente, puertos y comandos habituales. Si hay Makefile o scripts, son la fuente de verdad de los comandos; aquí solo se enumeran los importantes. -->
+El `Makefile` es la fuente de verdad de los comandos. Los principales:
+
+- `make install`: `uv sync`.
+- `make notebooks`: genera los `.ipynb` desde `notebooks/*.py` con jupytext.
+- `make data`: descarga y prepara el dataset.
+- `make lint`, `make format` y `make test`: ruff (lint y formato) y pytest.
+- `make docker-build` y `make docker-run`: construyen y arrancan el contenedor con Jupyter.
+
+El entrenamiento se lanza desde `notebooks/02_training` en Google Colab con GPU (el `.ipynb` se sube a mano; Colab usa Python 3.13 y el paquete se instala con `--ignore-requires-python`). Usa la configuración de `training.TRAIN_CONFIG`, guarda los mejores pesos como `brands.pt` y los descarga; se copian a `models/`. Los pasos están en el README.
 
 ## 8. Calidad: tests, CI y observabilidad
 
-<!-- Herramientas de test por tipo (unitario, integración, E2E), checks del CI, logs y métricas. Los principios de testing están en AGENTS.md, sección «Tests». -->
+- **Unitarios (pytest):** `report` (cálculo de exposición y reglas RD), la conversión de anotaciones de `dataset` y, en `detection`, el filtrado por umbral, el dibujo y el análisis de vídeo (sobre un vídeo sintético generado en el test) con un modelo simulado.
+- **Integración:** detección con `brands.pt` sobre una imagen de test del dataset; se salta si faltan los pesos o el dataset, por lo que no se ejecuta en el CI.
+- **Demo de punta a punta:** `03_demo` se ejecuta a mano con `jupyter nbconvert --to notebook --execute`, en local y en Docker, con los pesos y un vídeo de `data/videos/`; no está en el CI porque ninguno de los dos se versiona.
+- **Calidad del modelo:** métricas de validación del entrenamiento (RNF-03), sin test automático. Último entrenamiento (2026-11-04, #10): YOLO26 nano, `TRAIN_CONFIG` sin cambios, dataset OpenLogo en la revisión de `config.py`, Colab (Tesla T4, Python 3.13, torch 2.11 con CUDA, Ultralytics 8.4.202). Validación evaluada en local con CPU; en Colab da lo mismo con diferencias de mAP ≤ 0,002:
+
+  | Marca | Precisión | Recall | mAP@0.5 | mAP@0.5:0.95 |
+  |---|---|---|---|---|
+  | Todas | 0,846 | 0,786 | **0,851** | 0,543 |
+  | Coca-Cola | 0,845 | 0,822 | 0,877 | 0,583 |
+  | Pepsi | 0,811 | 0,795 | 0,827 | 0,595 |
+  | Adidas | 0,882 | 0,740 | 0,850 | 0,451 |
+
+  Cumple RNF-03 (mAP@0.5 ≥ 0,6). Inferencia en CPU (Ryzen 5 5600): ~28 ms por imagen de 640 px.
+- **Tiempo de vídeo (RNF-02):** medido a mano, no es un test automático. Un vídeo de 1 minuto a 30 fps y 1280×720 (1800 fotogramas, montado con imágenes de test del dataset) se analiza con `brands.pt` en 74 s en CPU (Ryzen 5 5600), unos 24 fotogramas/s, frente al límite de 5 minutos. Un vídeo real de móvil (15 s, 30 fps, 478×850) tarda 21,5 s, unos 21 fotogramas/s.
+- **CI:** `openspec validate`, ruff (lint y formato), pytest y `docker build`.
+- **Observabilidad:** logs en consola y métricas de entrenamiento de Ultralytics en `runs/`.
 
 ## 9. Despliegue
 
-<!-- Dónde y cómo se despliega cada componente, qué está preparado y qué queda fuera de alcance. -->
+No hay despliegue: el producto es una demo local con notebooks, ejecutable en Docker. Servir el modelo en cloud queda fuera de alcance ([PROJECT §6](PROJECT.md#6-alcance)).
 
 ## 10. Decisiones y contratos
 
 - Decisiones técnicas: [índice de ADR](ADR/README.md).
-- Interfaces estables: [índice de contratos](CONTRACTS/README.md).
+- Interfaces estables: [índice de contratos](CONTRACTS/README.md). No hay contratos: todas las piezas viven en el mismo paquete.

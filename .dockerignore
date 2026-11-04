@@ -1,0 +1,21 @@
+# Entorno local, Git e integraciones de IA
+.git/
+.venv/
+.claude/
+.opencode/
+
+# Cachés de Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Datos, modelos y resultados: se montan con `make docker-run`, no van en la imagen
+data/
+models/
+outputs/
+runs/
+
+# Notebooks generados
+*.ipynb
+.ipynb_checkpoints/

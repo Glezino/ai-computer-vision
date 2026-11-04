@@ -20,4 +20,6 @@ Para decisiones locales y reversibles basta con el `design.md` del cambio de Ope
 
 | ADR | Título | Estado |
 |---|---|---|
-| — | — | — |
+| [ADR-0001](0001-ultralytics-yolo-detector.md) | Ultralytics YOLO como detector, entrenado en Google Colab | Aceptado |
+| [ADR-0002](0002-python-environment-and-notebooks.md) | Entorno Python con uv, Docker y notebooks generados con jupytext | Aceptado |
+| [ADR-0003](0003-selective-openlogo-download.md) | Descarga selectiva de OpenLogo con huggingface_hub | Aceptado |
